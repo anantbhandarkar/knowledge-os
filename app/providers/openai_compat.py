@@ -66,6 +66,18 @@ class OpenAICompatibleGenerator:
                 return text
         return "I don't have sufficient evidence to answer this confidently."
 
+    async def complete(self, prompt: str, *, max_tokens: int = 1500) -> str:
+        """Generic single-prompt completion — used by ingestion refine + representations.
+
+        Present only on real-LLM generators; the offline ExtractiveGenerator omits it
+        on purpose, so callers fall back to deterministic behavior via getattr().
+        """
+        resp = await self.client.chat.completions.create(
+            model=self.model, temperature=0, max_tokens=max_tokens,
+            messages=[{"role": "user", "content": prompt}],  # type: ignore[arg-type]
+        )
+        return (resp.choices[0].message.content or "").strip()
+
     async def judge_grounding(self, query: str, evidence: Sequence[Evidence]) -> tuple[float, bool]:
         if not evidence:
             return (0.0, False)

@@ -9,7 +9,7 @@ from __future__ import annotations
 import pathlib
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, File, Form, UploadFile
 from pydantic import BaseModel
 
 from app import runtime
@@ -62,6 +62,33 @@ async def ingest(req: IngestRequest):
     n = await ingest_text(req.text, doc_title=req.doc_title,
                           tenant_id=req.tenant_id, acl_tags=req.acl_tags)
     return {"ingested_chunks": n, "doc_title": req.doc_title}
+
+
+@app.post("/ingest/file")
+async def ingest_file_endpoint(
+    file: UploadFile = File(...),
+    tenant_id: str = Form("default"),
+    acl_tags: str = Form(""),
+    refine: bool = Form(False),
+):
+    """Upload a PDF/DOCX/PPTX/HTML/MD/TXT file -> CanonicalDoc JSON -> indexed."""
+    import tempfile
+    from app.ingest import ingest_file
+
+    suffix = pathlib.Path(file.filename or "upload.txt").suffix or ".txt"
+    tags = [t.strip() for t in acl_tags.split(",") if t.strip()]
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+        tmp.write(await file.read())
+        tmp_path = tmp.name
+    try:
+        n = await ingest_file(
+            tmp_path, tenant_id=tenant_id, acl_tags=tags,
+            doc_title=pathlib.Path(file.filename or "upload").stem, refine=refine,
+        )
+    finally:
+        pathlib.Path(tmp_path).unlink(missing_ok=True)
+    return {"ingested_chunks": n, "doc_title": pathlib.Path(file.filename or "upload").stem,
+            "format": suffix.lstrip(".")}
 
 
 @app.post("/chat")

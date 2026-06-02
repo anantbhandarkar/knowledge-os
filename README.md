@@ -26,7 +26,7 @@
 
 ⭐️ **Star this repo** to follow along — we ship the verify-gate, agentic Deep Lane, and visual retrieval in public.
 
-[**Quickstart**](#-quickstart) · [**Features**](#-key-features) · [**Architecture**](#-architecture) · [**Roadmap**](#-roadmap) · [**Contributing**](#-contributing) · [**License**](#-license)
+[**Quickstart**](#-quickstart) · [**Features**](#-key-features) · [**Architecture**](#-architecture) · [**Enterprise Guide**](./docs/ENTERPRISE_GUIDE.md) · [**Roadmap**](#-roadmap) · [**Contributing**](#-contributing) · [**License**](#-license)
 
 </div>
 
@@ -205,10 +205,19 @@ Ask something the corpus doesn't cover and it **abstains instead of guessing**:
 
 ### Ingest your own documents
 
+Raw text:
 ```bash
 curl -s -X POST http://localhost:8000/ingest \
   -H "Content-Type: application/json" \
   -d '{"text": "# My Policy\n\nTokens expire after 1 hour.", "doc_title": "My Policy"}'
+```
+
+A real file (PDF / DOCX / PPTX / HTML / MD) — parsed into **canonical JSON** first, never consumed raw:
+```bash
+curl -s -X POST http://localhost:8000/ingest/file \
+  -F "file=@./security-policy.pdf" \
+  -F "tenant_id=acme" -F "acl_tags=security-team"
+# The structure-preserving canonical JSON is written to data/canonical/<doc>.json
 ```
 
 ```jsonc
@@ -308,19 +317,25 @@ Knowledge OS is being built **in public, phase by phase**. Current state of the 
 | `app/rerank.py` — RRF fusion + reranker | ✅ complete |
 | `app/verify.py` / `app/routing.py` — gate + lane decisions | ✅ starter defaults (tunable) |
 | `app/generation.py` — extractive default + grounding judge | ✅ complete (offline) |
-| `app/api.py` — FastAPI `/chat` `/ingest` `/search` `/health` | ✅ complete |
-| Real LLM providers (`KOS_MODE=api`) | ⏳ drivers next |
-| `PgVectorStore` / `TurboVecStore` | ⏳ Phase 3 |
-| Deep Lane LLM planner, multi-rep, RAGAS | ⏳ Phase 2 |
+| `app/api.py` — FastAPI `/chat` `/ingest` `/ingest/file` `/search` `/health` | ✅ complete |
+| Real LLM providers — DeepSeek, OpenRouter, OpenAI-compatible (`KOS_MODE=api`) | ✅ complete (live-tested) |
+| `PgVectorStore` + `TurboVecStore` (two-step) | ✅ complete (live-tested) |
+| `app/parsing/` — PDF/DOCX/PPTX/HTML/MD → **canonical JSON** (+ pandoc, opt-in Docling, LLM refine) | ✅ complete |
+| `app/representations.py` — summaries, synthetic Q&A, anchors, entity index | ✅ complete |
+| `app/security/guardrails.py` — PII redaction, prompt-injection, RBAC→ACL | ✅ complete |
+| `app/cache.py` — semantic answer cache · `app/evals/` — faithfulness + golden set | ✅ complete |
+| Deep Lane LLM planner, knowledge graph, ColPali, React UI, K8s | ⏳ remaining |
 
 ---
 
 ## 🗺️ Roadmap
 
 - [x] **Phase 1 — Foundation** *(Weeks 1–4)* · PDF/Markdown parsing, structure-aware chunking, contextual embeddings, `PgVectorStore`, hybrid retrieval (Express Lane), cross-encoder reranking, lightweight verification, citation-grounded streaming generation, FastAPI, Docker, 50-question golden set.
-- [ ] **Phase 2 — Intelligence** *(Weeks 5–10)* · Hierarchical summaries, synthetic Q&A + anchors, entity index, knowledge graph, **Deep Lane** LLM planning via LangGraph, full repair loop, full verification engine, semantic cache, memory layer, RAGAS integration.
-- [ ] **Phase 3 — Enterprise** *(Weeks 11–16)* · Multi-tenant isolation, RBAC, guardrails (prompt-injection/PII/poisoning), **ColQwen2.5 visual retrieval**, SQL/API tools, React UI with clickable citations, `TurboVecStore`, embedding lifecycle, distributed tracing, failure dashboards.
-- [ ] **Phase 4 — Scale + Optimize** *(Weeks 17+)* · Kubernetes + autoscaling, cost-aware routing, full RAPTOR clustering, GraphRAG community detection, durable memory, drift detection, DSPy prompt optimization, A/B framework, DR + runbooks.
+- [x] **Phase 2 — Intelligence** *(partial)* · ✅ document & section summaries, synthetic Q&A + anchors, entity index (`app/representations.py`); ✅ **canonical-JSON ingestion** for PDF/DOCX/PPTX/HTML (`app/parsing/`). ⏳ Deep Lane LLM planner, knowledge graph, memory layer.
+- [x] **Phase 3 — Enterprise** *(partial)* · ✅ multi-tenant ACL (pre-retrieval, in SQL), `TurboVecStore`, guardrails (PII/redaction + prompt-injection + RBAC→ACL). ⏳ ColQwen2.5 visual retrieval, SQL/API tools, React UI, distributed tracing.
+- [x] **Phase 4 — Scale + Optimize** *(partial)* · ✅ semantic cache (`app/cache.py`), cost-aware provider routing, faithfulness eval + golden set (`app/evals/`). ⏳ Kubernetes, GraphRAG communities, DSPy, drift detection.
+
+> 📖 **New here?** Read the **[Enterprise Adoption Guide](./docs/ENTERPRISE_GUIDE.md)** — how to take this from `docker compose up` to a production RAG for your org, including the canonical-JSON ingestion philosophy and the parsing quality ladder.
 
 ---
 
