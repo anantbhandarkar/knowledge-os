@@ -23,7 +23,6 @@ def _approx_tokens(text: str) -> int:
 
 
 async def assemble_context(state: PipelineState) -> PipelineState:
-    source_docs = {e.chunk_id: e for e in state.evidence}
     unique_doc_titles = {e.doc_title for e in state.evidence}
 
     # TODO: replace with a real per-doc token lookup from the documents table.

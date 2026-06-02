@@ -86,7 +86,7 @@ class InMemoryVectorStore:
         if not visible:
             return []
         N = len(visible)
-        df = Counter()
+        df: Counter[str] = Counter()
         toks: dict[str, list[str]] = {}
         for c in visible:
             t = _tokenize(c.text)
