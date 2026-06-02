@@ -17,9 +17,15 @@ from app.vectorstore.base import VectorStore
 from app.vectorstore.memory import InMemoryVectorStore
 
 MODE = os.getenv("KOS_MODE", "offline")
+PROVIDER = os.getenv("KOS_PROVIDER", "openrouter")  # openrouter | deepseek
 VECTOR_STORE = os.getenv("VECTOR_STORE", "memory")
-MODEL = os.getenv("KOS_MODEL", "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free")
+MODEL = os.getenv("KOS_MODEL", "")  # provider-specific default applied below
 DSN = os.getenv("DATABASE_URL", "postgresql://kos:kos@localhost:5432/knowledge_os")
+
+_DEFAULT_MODEL = {
+    "openrouter": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+    "deepseek": "deepseek-chat",
+}
 
 # Embedding + reranking stay offline/deterministic by default (swap as needed).
 EMBEDDER = HashEmbedder()
@@ -27,8 +33,13 @@ RERANKER = LexicalReranker()
 
 GENERATOR: Generator
 if MODE == "api":
-    from app.providers.openrouter import OpenRouterGenerator
-    GENERATOR = OpenRouterGenerator(MODEL)
+    model = MODEL or _DEFAULT_MODEL.get(PROVIDER, "")
+    if PROVIDER == "deepseek":
+        from app.providers.deepseek import DeepSeekGenerator
+        GENERATOR = DeepSeekGenerator(model)
+    else:
+        from app.providers.openrouter import OpenRouterGenerator
+        GENERATOR = OpenRouterGenerator(model)
 else:
     GENERATOR = ExtractiveGenerator()
 
