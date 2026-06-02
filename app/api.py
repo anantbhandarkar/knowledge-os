@@ -22,10 +22,14 @@ DEMO_DIR = pathlib.Path(__file__).resolve().parent.parent / "demo" / "corpus"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if hasattr(runtime.STORE, "setup"):
+        await runtime.STORE.setup()  # pgvector/turbovec async init (no-op for memory)
     if DEMO_DIR.exists() and await runtime.STORE.count() == 0:
         for md in sorted(DEMO_DIR.glob("*.md")):
             await ingest_text(md.read_text(), doc_title=md.stem, tenant_id="default")
     yield
+    if hasattr(runtime.STORE, "close"):
+        await runtime.STORE.close()
 
 
 app = FastAPI(title="Knowledge OS", version="0.1.0", lifespan=lifespan)
