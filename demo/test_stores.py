@@ -85,8 +85,13 @@ async def exercise(name: str, store, table: str):
 
 
 async def main():
-    assert os.environ.get("OPENROUTER_API_KEY"), "OPENROUTER_API_KEY not set"
-    runtime.GENERATOR = OpenRouterGenerator(MODEL)
+    provider = os.getenv("KOS_PROVIDER", "openrouter")
+    model = os.getenv("KOS_MODEL")
+    if provider == "deepseek":
+        from app.providers.deepseek import DeepSeekGenerator
+        runtime.GENERATOR = DeepSeekGenerator(model or "deepseek-chat")
+    else:
+        runtime.GENERATOR = OpenRouterGenerator(model or MODEL)
     print(f"generator: {runtime.GENERATOR.name}")
 
     dim = runtime.EMBEDDER.dim
