@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="./logo.png" alt="Knowledge OS" width="160" />
+<img src="./Logo.png" alt="Knowledge OS" width="160" />
 
 # Knowledge OS
 
