@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="./Logo.png" alt="Knowledge OS" width="160" />
+<img src="./assets/logo.png" alt="Knowledge OS" width="160" />
 
 # Knowledge OS
 
@@ -14,6 +14,7 @@
 </p>
 
 <p>
+<a href="https://github.com/anantbhandarkar/knowledge-os/actions/workflows/ci.yml"><img src="https://github.com/anantbhandarkar/knowledge-os/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
 <img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License: Apache 2.0" />
 <img src="https://img.shields.io/badge/python-3.12+-3776AB.svg?logo=python&logoColor=white" alt="Python 3.12+" />
 <img src="https://img.shields.io/badge/FastAPI-async-009688.svg?logo=fastapi&logoColor=white" alt="FastAPI" />
@@ -156,7 +157,7 @@ Each stage is an independent, testable module under [`app/`](./app). The online 
 ### Option A — Docker Compose
 
 ```bash
-git clone https://github.com/your-org/knowledge-os.git
+git clone https://github.com/anantbhandarkar/knowledge-os.git
 cd knowledge-os
 docker compose up -d --build     # offline mode, zero config
 # API live at http://localhost:8000  (Swagger at /docs)
@@ -166,7 +167,7 @@ docker compose up -d --build     # offline mode, zero config
 ### Option B — Local (Python 3.12+)
 
 ```bash
-git clone https://github.com/your-org/knowledge-os.git
+git clone https://github.com/anantbhandarkar/knowledge-os.git
 cd knowledge-os
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
@@ -355,7 +356,7 @@ Good first issues: implement `classify_lane` routing heuristics, add a parser fo
 
 If Knowledge OS is useful to you, a star helps others find it.
 
-[![Star History Chart](https://api.star-history.com/svg?repos=your-org/knowledge-os&type=Date)](https://star-history.com/#your-org/knowledge-os&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=anantbhandarkar/knowledge-os&type=Date)](https://star-history.com/#anantbhandarkar/knowledge-os&Date)
 
 ---
 
@@ -391,6 +392,6 @@ Knowledge OS stands on the shoulders of the open-source RAG ecosystem — **Llam
 
 **Built for teams that need answers they can trust — and trace.**
 
-⭐️ Star us · 🐛 [Report a bug](https://github.com/your-org/knowledge-os/issues) · 💡 [Request a feature](https://github.com/your-org/knowledge-os/issues) · 📖 [Architecture](./docs/ARCHITECTURE.md)
+⭐️ Star us · 🐛 [Report a bug](https://github.com/anantbhandarkar/knowledge-os/issues) · 💡 [Request a feature](https://github.com/anantbhandarkar/knowledge-os/issues) · 📖 [Architecture](./docs/ARCHITECTURE.md)
 
 </div>

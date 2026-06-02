@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-type-test:
+    name: Lint · Type · Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install (dev + api extras for full type resolution)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,api]"
+
+      - name: Ruff (lint)
+        run: ruff check .
+
+      - name: Mypy (types)
+        run: mypy app
+
+      - name: Pytest (offline unit smoke)
+        run: pytest tests/ -q
+        env:
+          KOS_MODE: offline
+          VECTOR_STORE: memory
+
+  docker:
+    name: Docker build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t knowledge-os:ci .
+
+      - name: Smoke-test the container (offline /health + /chat)
+        run: |
+          docker run -d --name kos -p 8000:8000 knowledge-os:ci
+          for i in $(seq 1 20); do
+            curl -sf http://localhost:8000/health && break || sleep 2
+          done
+          curl -sf http://localhost:8000/health
+          curl -sf -X POST http://localhost:8000/chat \
+            -H "Content-Type: application/json" \
+            -d '{"query":"What is the JWT expiry for contractor accounts?"}' | grep -i "4-hour"
+          docker rm -f kos
