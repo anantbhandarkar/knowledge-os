@@ -99,7 +99,7 @@ flowchart LR
     V -->|"REPAIR · Deep · &lt;3"| RP["repair"]
     RP --> R
     V -->|"ABSTAIN"| AB["no-answer"]
-    V -->|"REPAIR on Express"| G
+    V -->|"REPAIR on Express (can't loop)"| AB
     G --> END([cited answer + spans])
     AB --> END
 ```

@@ -1,0 +1,28 @@
+# Knowledge OS — local dev / demo.
+# Default (offline) mode runs the API alone with zero external dependencies.
+# Postgres is provided for when you set KOS_MODE=api / VECTOR_STORE=pgvector.
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      KOS_MODE: ${KOS_MODE:-offline}
+      VECTOR_STORE: ${VECTOR_STORE:-memory}
+      DATABASE_URL: ${DATABASE_URL:-}
+    # depends_on: [postgres]   # uncomment when using pgvector
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    profiles: ["pgvector"]     # only starts with: docker compose --profile pgvector up
+    environment:
+      POSTGRES_USER: kos
+      POSTGRES_PASSWORD: kos
+      POSTGRES_DB: knowledge_os
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

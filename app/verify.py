@@ -87,8 +87,21 @@ def decide_gate(scores: VerificationScores, repair_count: int) -> GateDecision:
          or must BOTH clear the bar? (Weighted blend vs. hard AND-gate.)
 
     Replace the line below with your logic.
+
+    --- STARTER DEFAULT (tune me) ---
+    - citation_confidence is a soft veto: strong grounding can't fully rescue
+      un-citable evidence, but it can clear the PASS bar together.
+    - a contradiction never silently PASSes — repair first to find a tie-breaker.
+    - below REPAIR_FLOOR, repair is unlikely to help -> abstain.
     """
-    raise NotImplementedError(
-        "Implement decide_gate — see the design questions above. "
-        "Return GateDecision.PASS / .REPAIR / .ABSTAIN."
-    )
+    blended = 0.5 * scores.grounding_confidence + 0.5 * scores.retrieval_confidence
+
+    if blended < REPAIR_FLOOR:
+        return GateDecision.ABSTAIN
+    if scores.contradiction_detected and repair_count < MAX_REPAIR_ITERATIONS:
+        return GateDecision.REPAIR
+    if blended >= PASS_THRESHOLD and scores.citation_confidence >= 0.5:
+        return GateDecision.PASS
+    if repair_count < MAX_REPAIR_ITERATIONS:
+        return GateDecision.REPAIR
+    return GateDecision.ABSTAIN

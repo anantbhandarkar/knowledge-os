@@ -151,16 +151,16 @@ Each stage is an independent, testable module under [`app/`](./app). The online 
 
 ## 🚀 Quickstart
 
-> **Heads up:** Knowledge OS is in **Phase 1 (pre-release)**. The orchestration spine, routing fork, and verification gate are scaffolded; retrieval/generation provider bodies are being wired. See [Project Status](#-project-status).
+> **Runs offline out of the box.** The default mode uses deterministic embeddings and an *extractive* generator (grounded by construction — it cannot hallucinate), so the Express Lane works with **no API keys and no Postgres**. Set `KOS_MODE=api` for real LLMs and `VECTOR_STORE=pgvector` for production storage.
 
-### Option A — Docker Compose (recommended)
+### Option A — Docker Compose
 
 ```bash
 git clone https://github.com/your-org/knowledge-os.git
 cd knowledge-os
-cp .env.example .env          # add your provider API keys
-docker compose up -d          # Postgres + pgvector + API
-# API is now live at http://localhost:8000  (docs at /docs)
+docker compose up -d --build     # offline mode, zero config
+# API live at http://localhost:8000  (Swagger at /docs)
+# The bundled demo corpus auto-ingests on startup.
 ```
 
 ### Option B — Local (Python 3.12+)
@@ -169,26 +169,45 @@ docker compose up -d          # Postgres + pgvector + API
 git clone https://github.com/your-org/knowledge-os.git
 cd knowledge-os
 python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"       # langgraph, pydantic, fastapi, pgvector, ...
-
-# bring up Postgres + pgvector
-docker compose up -d postgres
-
-uvicorn app.api:app --reload
+pip install -e ".[dev]"
+uvicorn app.api:app --reload     # demo corpus auto-ingests on startup
 ```
 
-### Ingest a corpus and ask a question
+### Ask a question
 
 ```bash
-# 1) Ingest documents
-curl -X POST http://localhost:8000/ingest \
-  -F "files=@./security-policy-v3.2.pdf" \
-  -F "tenant_id=acme"
+curl -s http://localhost:8000/health
+# {"status":"ok","mode":"offline","chunks":15}
 
-# 2) Ask — streamed answer with span-level citations
-curl -N -X POST http://localhost:8000/chat \
+curl -s -X POST http://localhost:8000/chat \
   -H "Content-Type: application/json" \
-  -d '{"query": "What is the JWT expiry for contractor accounts?", "tenant_id": "acme"}'
+  -d '{"query": "What is the JWT expiry for contractor accounts?"}'
+```
+
+Real, verified output from the bundled demo corpus:
+
+```jsonc
+{
+  "answer": "Contractor accounts are issued JWT tokens with a 4-hour TTL, reflecting their reduced trust level. [platform-security-policy]",
+  "lane": "express",
+  "verification_result": "pass",
+  "citations": [{ "source_doc_title": "platform-security-policy", "section_path": ["Authentication", "Token Management"], "...": "..." }]
+}
+```
+
+Ask something the corpus doesn't cover and it **abstains instead of guessing**:
+
+```jsonc
+// "What is the password policy on the Moon?"
+{ "answer": "I don't have sufficient evidence to answer this confidently...", "verification_result": "abstain" }
+```
+
+### Ingest your own documents
+
+```bash
+curl -s -X POST http://localhost:8000/ingest \
+  -H "Content-Type: application/json" \
+  -d '{"text": "# My Policy\n\nTokens expire after 1 hour.", "doc_title": "My Policy"}'
 ```
 
 ```jsonc
@@ -276,17 +295,22 @@ Express Lane carries 60–70% of traffic → blended P95 stays under 3s. Optimiz
 
 Knowledge OS is being built **in public, phase by phase**. Current state of the scaffold:
 
+**✅ Express Lane runs end-to-end offline today** — ingest → hybrid retrieve → rerank → verify → cited answer (or abstention). Verified by `tests/test_smoke.py`.
+
 | Module | Status |
 |---|---|
 | `app/graph.py` — LangGraph spine + lane fork + repair loop | ✅ complete |
 | `app/models.py` — typed domain contracts | ✅ complete |
-| `app/compression.py` — chunk vs full-doc assembly | ✅ complete |
-| `app/rerank.py` — RRF fusion | ✅ (cross-encoder call pending) |
-| `app/routing.py` — `classify_lane` | 🔨 in progress |
-| `app/verify.py` — `decide_gate` | 🔨 in progress |
-| `app/retrieval.py` — ACL-filtered vector + BM25 | ⏳ wiring |
-| `app/generation.py` — provider generation + grounding judge | ⏳ wiring |
-| `VectorStore` abstraction (`app/vectorstore/`) | 📋 designed (diagram #3) |
+| `app/vectorstore/` — `VectorStore` + `InMemoryVectorStore` | ✅ complete (offline) |
+| `app/ingest.py` — heading-aware chunking + contextual prefix | ✅ complete |
+| `app/retrieval.py` — ACL-filtered hybrid (vector + BM25) | ✅ complete |
+| `app/rerank.py` — RRF fusion + reranker | ✅ complete |
+| `app/verify.py` / `app/routing.py` — gate + lane decisions | ✅ starter defaults (tunable) |
+| `app/generation.py` — extractive default + grounding judge | ✅ complete (offline) |
+| `app/api.py` — FastAPI `/chat` `/ingest` `/search` `/health` | ✅ complete |
+| Real LLM providers (`KOS_MODE=api`) | ⏳ drivers next |
+| `PgVectorStore` / `TurboVecStore` | ⏳ Phase 3 |
+| Deep Lane LLM planner, multi-rep, RAGAS | ⏳ Phase 2 |
 
 ---
 

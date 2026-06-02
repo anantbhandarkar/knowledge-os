@@ -1,26 +1,34 @@
-"""Stage 3 — hybrid retrieval. ACL filters applied BEFORE the query, never after.
+"""Stage 3 — hybrid retrieval. ACL filters applied DURING the search, never after.
 
-Phase-1 contract: run each planned mode against Postgres in parallel and collect
-Hits. Vector + BM25 live in the same pgvector DB, so both filter on tenant_id +
-acl_tags in the WHERE clause. Bodies are TODO — wire to your db.py session.
+Runs the planned modes in parallel against the active VectorStore. Vector + BM25 are
+both ACL/tenant-scoped at the store level (SQL WHERE in production, Python in the demo).
 """
 
 from __future__ import annotations
 
 import asyncio
 
-from app.models import Hit, PipelineState, RetrievalMode
+from app import runtime
+from app.models import PipelineState, RetrievalMode
+
+CANDIDATES_PER_MODE = 20
 
 
-async def _vector_search(state: PipelineState) -> list[Hit]:
-    # TODO: embed(rewritten_query, kind="query") then pgvector `<=>` ANN search,
-    #       WHERE tenant_id = :tid AND acl_tags && :acl  (pre-filter is mandatory).
-    return []
+async def _vector_search(state: PipelineState):
+    q = state.rewritten_query or state.query
+    (qvec,) = await runtime.EMBEDDER.embed([q], kind="query")
+    return await runtime.STORE.vector_search(
+        qvec, k=CANDIDATES_PER_MODE,
+        tenant_id=state.tenant_id, acl_tags=state.acl_tags,
+    )
 
 
-async def _bm25_search(state: PipelineState) -> list[Hit]:
-    # TODO: tsvector / pg_search full-text, same ACL WHERE clause.
-    return []
+async def _bm25_search(state: PipelineState):
+    q = state.rewritten_query or state.query
+    return await runtime.STORE.lexical_search(
+        q, k=CANDIDATES_PER_MODE,
+        tenant_id=state.tenant_id, acl_tags=state.acl_tags,
+    )
 
 
 _MODE_FNS = {

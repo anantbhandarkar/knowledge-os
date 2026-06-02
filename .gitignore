@@ -30,6 +30,6 @@ htmlcov/
 # Data / artifacts
 *.sqlite
 *.db
-data/
-corpus/
+/data/
 *.log
+# NOTE: demo/corpus/ is intentionally tracked (the bundled demo dataset).

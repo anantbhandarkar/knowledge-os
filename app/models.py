@@ -55,6 +55,17 @@ class Evidence(BaseModel):
     rerank_score: float  # cross-encoder score, comparable across all evidence
 
 
+class Citation(BaseModel):
+    """A claim-to-source mapping returned to the client (NotebookLM-style)."""
+    claim_text: str
+    source_doc_title: str
+    section_path: list[str] = Field(default_factory=list)
+    page_numbers: list[int] = Field(default_factory=list)
+    evidence_span: str
+    chunk_id: str
+    confidence: float = 0.0
+
+
 class VerificationScores(BaseModel):
     """The three signals the verify-gate weighs. Each in [0.0, 1.0]."""
     retrieval_confidence: float  # did we find relevant material at all?
@@ -99,4 +110,4 @@ class PipelineState(BaseModel):
 
     # --- stage 8: output ---
     answer: str | None = None
-    citations: list[str] = Field(default_factory=list)
+    citations: list[Citation] = Field(default_factory=list)

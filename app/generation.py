@@ -1,40 +1,55 @@
 """Stage 8 — evidence-only generation + the grounding judge used by Stage 6.
 
-`judge_grounding` is the LLM call the verify-gate leans on. `generate_with_citations`
-and `abstain` produce the user-facing output. All three are TODO bodies — wire them
-to your Generator provider (Claude / Gemini / OpenRouter behind one interface).
+Both delegate to the active Generator provider. The offline default is extractive
+(grounded by construction); the api mode swaps in a real LLM with the closed-book
+examiner system prompt. Citations are built from the evidence the answer drew on.
 """
 
 from __future__ import annotations
 
-from app.models import Evidence, PipelineState
+from app import runtime
+from app.models import Citation, Evidence, GateDecision, PipelineState
 
 
 async def judge_grounding(query: str, evidence: list[Evidence]) -> tuple[float, bool]:
-    """Return (grounding_confidence in [0,1], contradiction_detected).
+    """(grounding_confidence in [0,1], contradiction_detected)."""
+    if not evidence:
+        return (0.0, False)
+    return await runtime.GENERATOR.judge_grounding(query, evidence)
 
-    TODO: structured LLM call. Prompt it to (a) rate how fully the evidence
-    supports a confident answer to `query`, and (b) flag any contradictions
-    between evidence pieces. Use tool-calling for a typed result.
-    """
-    return (0.0, False)
+
+def _citations(evidence: list[Evidence], limit: int = 3) -> list[Citation]:
+    return [
+        Citation(
+            claim_text=e.text.strip().split(". ")[0][:160],
+            source_doc_title=e.doc_title,
+            section_path=e.section_path,
+            page_numbers=e.page_numbers,
+            evidence_span=e.text.strip()[:240],
+            chunk_id=e.chunk_id,
+            confidence=round(min(1.0, max(0.0, e.rerank_score)), 3),
+        )
+        for e in evidence[:limit]
+    ]
 
 
 async def generate_with_citations(state: PipelineState) -> PipelineState:
-    """Evidence-only answer with span-level citations. No claims beyond evidence."""
-    # TODO: generator.stream(messages) with the evidence-only system prompt; map
-    #       each sentence to its chunk_id; populate state.answer + state.citations.
-    state.answer = "[generation not yet wired]"
-    state.citations = [e.chunk_id for e in state.evidence]
+    state.answer = await runtime.GENERATOR.generate(state.query, state.evidence)
+    # Align the primary citation with the evidence the answer actually drew from.
+    core = (state.answer or "").rsplit(" [", 1)[0][:60]
+    evidence = list(state.evidence)
+    if core:
+        evidence.sort(key=lambda e: core not in e.text)  # matching chunk first
+    state.citations = _citations(evidence)
     return state
 
 
 async def abstain(state: PipelineState) -> PipelineState:
-    """No-answer policy — show partial evidence, suggest sources, never guess."""
-    found = "; ".join(f"{e.doc_title}" for e in state.evidence[:3]) or "nothing relevant"
+    state.decision = GateDecision.ABSTAIN  # reflect the actual outcome in the response
+    found = "; ".join(dict.fromkeys(e.doc_title for e in state.evidence[:3])) or "nothing relevant"
     state.answer = (
         "I don't have sufficient evidence to answer this confidently. "
-        f"Here's what I found: {found}."
+        f"Here's what I found: {found}. You may want to check those sources directly."
     )
-    state.citations = [e.chunk_id for e in state.evidence]
+    state.citations = _citations(state.evidence)
     return state

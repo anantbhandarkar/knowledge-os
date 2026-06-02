@@ -7,6 +7,7 @@ Never skip reranking: it's the single highest-leverage quality step in the spec.
 
 from __future__ import annotations
 
+from app import runtime
 from app.models import Evidence, Hit, PipelineState
 
 RRF_K = 60          # standard RRF constant
@@ -34,15 +35,18 @@ def reciprocal_rank_fusion(hits: list[Hit]) -> list[Hit]:
 
 
 async def _cross_encoder_rerank(query: str, hits: list[Hit]) -> list[Evidence]:
-    # TODO: call reranker.rerank(query, [h.text...], top_n=RERANK_TOP_N) and map
-    #       the returned (index, score) pairs back onto Evidence.
+    if not hits:
+        return []
+    ranked = await runtime.RERANKER.rerank(
+        query, [h.text for h in hits], top_n=RERANK_TOP_N
+    )
     return [
         Evidence(
-            chunk_id=h.chunk_id, doc_title=h.doc_title, text=h.text,
-            section_path=h.section_path, page_numbers=h.page_numbers,
-            rerank_score=0.0,  # placeholder until the reranker is wired
+            chunk_id=hits[i].chunk_id, doc_title=hits[i].doc_title, text=hits[i].text,
+            section_path=hits[i].section_path, page_numbers=hits[i].page_numbers,
+            rerank_score=round(score, 4),
         )
-        for h in hits[:RERANK_TOP_N]
+        for i, score in ranked
     ]
 
 

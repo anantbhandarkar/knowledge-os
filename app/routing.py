@@ -65,8 +65,16 @@ def classify_lane(intent: str, query: str) -> Lane:
     Constants available: EXPRESS_INTENTS, DEEP_INTENTS, _COMPLEX_SIGNALS, Lane.
 
     Replace the line below with your routing logic.
+
+    --- STARTER DEFAULT (tune me) ---
+    Leans SAFE: any complexity signal OR a deep intent OR a long/multi-clause query
+    goes Deep; only clearly-simple lookups take the Express fast path.
     """
-    raise NotImplementedError(
-        "Implement classify_lane — see the trade-offs above. "
-        "Return Lane.EXPRESS or Lane.DEEP."
-    )
+    q = query.lower()
+    if intent in DEEP_INTENTS:
+        return Lane.DEEP
+    if any(sig in q for sig in _COMPLEX_SIGNALS):
+        return Lane.DEEP
+    if len(q.split()) > 25 or " and " in q:  # multi-clause / long → likely multi-hop
+        return Lane.DEEP
+    return Lane.EXPRESS

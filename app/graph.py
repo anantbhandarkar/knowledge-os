@@ -94,7 +94,9 @@ def route_after_verify(state: PipelineState) -> str:
     # decision == REPAIR
     if state.lane == Lane.DEEP and state.repair_count < MAX_REPAIR_ITERATIONS:
         return "repair"
-    return "generate" if state.lane == Lane.EXPRESS else "abstain"
+    # Express can't repair, and we won't emit weakly-grounded text -> abstain.
+    # (Deep that exhausted its repair budget also abstains.)
+    return "abstain"
 
 
 # ---- assembly --------------------------------------------------------------
